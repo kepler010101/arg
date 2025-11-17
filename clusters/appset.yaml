@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: lab-clusters-appset
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - git:
+        repoURL: 'https://github.com/kepler010101/arg.git'
+        revision: main               # или ваша ветка
+        directories:
+          - path: clusters/spoke*    # каждая такая папка = отдельный кластер
+  template:
+    metadata:
+      labels:
+        cluster: '{{.path.basename}}'               # spoke1 / spoke2
+      name: '{{.path.basename}}-install-all'        # spoke1-install-all
+      namespace: argocd
+    spec:
+      project: default
+      destination:
+        server: 'https://kubernetes.default.svc'    # hub-кластер, где ArgoCD
+      source:
+        repoURL: 'https://github.com/kepler010101/arg.git'
+        targetRevision: main
+        path: '{{.path.path}}/infr-apps'            # clusters/spoke1/infr-apps
+        directory:
+          recurse: true
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: false
+

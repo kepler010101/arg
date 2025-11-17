@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kind-spoke2-demo
+  namespace: argocd
+spec:
+  project: default
+  destination:
+    name: kind-spoke2          # имя кластера в ArgoCD для второго kind
+    namespace: demo-spoke2
+  source:
+    repoURL: 'https://github.com/kepler010101/arg.git'
+    targetRevision: main
+    path: apps/demo
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
