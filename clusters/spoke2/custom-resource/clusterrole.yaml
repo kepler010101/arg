@@ -1,0 +1,44 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: argocd-manager-watcher
+rules:
+  # Базовые права для просмотра
+  - apiGroups: ["apps", ""]
+    resources:
+      - deployments
+      - services
+      - configmaps
+      - pods
+      - namespaces
+    verbs: ["get", "list", "watch"]
+  
+  # Права для создания Events (observability)
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "list"]
+  
+  # Права для управления namespaces
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["create", "get", "list", "watch", "patch"]
+  
+  # Критические права для JIT RBAC
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["clusterrolebindings"]
+    verbs: ["create", "update", "patch", "get", "list", "watch", "delete"]
+  
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["clusterroles"]
+    verbs: ["bind", "get", "update", "patch", "create", "escalate", "list", "watch"]
+    # ВАЖНО: В production добавить resourceNames whitelist или Kyverno
+  
+  # Права для управления Jobs/CronJobs
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["create", "delete", "list", "get", "watch", "update", "patch"]
+  
+  # Права для cleanup pods
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["delete", "get", "list"]

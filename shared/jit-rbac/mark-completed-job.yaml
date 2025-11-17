@@ -1,0 +1,51 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: PLACEHOLDER-mark-completed
+  namespace: kube-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "99"
+  labels:
+    app.kubernetes.io/part-of: argo-jit-rbac
+    jit-rbac/app: PLACEHOLDER
+spec:
+  ttlSecondsAfterFinished: 60
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: argo-jit-rbac
+        jit-rbac/app: PLACEHOLDER
+    spec:
+      serviceAccountName: argocd-manager
+      restartPolicy: Never
+      containers:
+      - name: mark-completed
+        image: bitnami/kubectl:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: JIT_RBAC_APP
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['jit-rbac/app']
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            set -euo pipefail
+            echo "Marking sync as completed for ${JIT_RBAC_APP} at $(date -u +%FT%TZ)"
+            
+            # Проставить метку completed на ClusterRole
+            kubectl label clusterrole -l jit-rbac/app=${JIT_RBAC_APP} \
+              jit-rbac/sync-status=completed --overwrite || {
+              echo "Failed to label ClusterRole"
+              exit 1
+            }
+            
+            # Проставить метку completed на ClusterRoleBinding
+            kubectl label clusterrolebinding -l jit-rbac/app=${JIT_RBAC_APP} \
+              jit-rbac/sync-status=completed --overwrite || {
+              echo "Failed to label ClusterRoleBinding"
+              exit 1
+            }
+            
+            echo "Successfully marked ${JIT_RBAC_APP} as completed at $(date -u +%FT%TZ)"
