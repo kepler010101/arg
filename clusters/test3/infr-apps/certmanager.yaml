@@ -14,7 +14,7 @@ spec:
     - FailOnSharedResource=false
   project: default
   destination:
-    name: kind-spoke1  # ← ИСПРАВЛЕНО
+    name: kind-spoke1
     namespace: cert-manager
   sources:
     # Source 1: JIT RBAC шаблоны (wave -1)
