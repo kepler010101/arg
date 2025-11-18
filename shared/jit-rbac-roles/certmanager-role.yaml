@@ -4,6 +4,7 @@ metadata:
   name: PLACEHOLDER
   annotations:
     argocd.argoproj.io/sync-wave: "-1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
   labels:
     app.kubernetes.io/part-of: argo-jit-rbac
     jit-rbac/sync-status: "in-progress"
@@ -61,6 +62,7 @@ metadata:
   name: PLACEHOLDER
   annotations:
     argocd.argoproj.io/sync-wave: "-1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
   labels:
     app.kubernetes.io/part-of: argo-jit-rbac
     jit-rbac/sync-status: "in-progress"
