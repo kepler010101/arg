@@ -32,20 +32,30 @@ spec:
         args:
           - |
             set -euo pipefail
-            echo "Marking sync as completed for ${JIT_RBAC_APP} at $(date -u +%FT%TZ)"
+            echo "========================================="
+            echo "Marking sync as completed for ${JIT_RBAC_APP}"
+            echo "Started at $(date -u +%FT%TZ)"
+            echo "========================================="
             
             # Проставить метку completed на ClusterRole
-            kubectl label clusterrole -l jit-rbac/app=${JIT_RBAC_APP} \
-              jit-rbac/sync-status=completed --overwrite || {
-              echo "Failed to label ClusterRole"
+            if kubectl label clusterrole -l jit-rbac/app=${JIT_RBAC_APP} \
+              jit-rbac/sync-status=completed --overwrite; then
+              echo "✅ ClusterRole labeled successfully"
+            else
+              echo "❌ Failed to label ClusterRole"
               exit 1
-            }
+            fi
             
             # Проставить метку completed на ClusterRoleBinding
-            kubectl label clusterrolebinding -l jit-rbac/app=${JIT_RBAC_APP} \
-              jit-rbac/sync-status=completed --overwrite || {
-              echo "Failed to label ClusterRoleBinding"
+            if kubectl label clusterrolebinding -l jit-rbac/app=${JIT_RBAC_APP} \
+              jit-rbac/sync-status=completed --overwrite; then
+              echo "✅ ClusterRoleBinding labeled successfully"
+            else
+              echo "❌ Failed to label ClusterRoleBinding"
               exit 1
-            }
+            fi
             
-            echo "Successfully marked ${JIT_RBAC_APP} as completed at $(date -u +%FT%TZ)"
+            echo "========================================="
+            echo "Successfully marked ${JIT_RBAC_APP} as completed"
+            echo "Completed at $(date -u +%FT%TZ)"
+            echo "========================================="

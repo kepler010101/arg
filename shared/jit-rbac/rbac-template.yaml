@@ -1,14 +1,14 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: PLACEHOLDER  # Будет заменено через kustomize patches
+  name: PLACEHOLDER
   annotations:
     argocd.argoproj.io/sync-wave: "-1"
   labels:
     app.kubernetes.io/part-of: argo-jit-rbac
     jit-rbac/sync-status: "in-progress"
     jit-rbac/app: PLACEHOLDER
-rules: []  # Пустой! Права берутся из jit-rbac-roles
+rules: []
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

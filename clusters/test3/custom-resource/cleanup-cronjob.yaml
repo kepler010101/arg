@@ -34,27 +34,30 @@ spec:
                 
                 echo "========================================="
                 echo "JIT RBAC Cleanup started at $(date -u +%FT%TZ)"
+                echo "Hostname: ${HOSTNAME}"
                 echo "========================================="
                 
                 # Event: Scan started
-                kubectl create event jit-rbac-scan-started-$(date +%s) \
+                kubectl create event "jit-rbac-scan-started-$(date +%s)" \
                   --type=Normal \
                   --reason=JitRbacScanStarted \
                   --message="action=scan status=started timestamp=$(date -u +%FT%TZ)" \
                   --reporting-controller=jit-rbac-cleanup \
                   --reporting-instance=${HOSTNAME} \
-                  --namespace=kube-system || true
+                  --namespace=kube-system 2>/dev/null || true
                 
                 # ========================================
                 # Приоритет 1: Удалить completed
                 # ========================================
+                echo ""
                 echo "--- Phase 1: Cleanup completed RBAC ---"
+                
                 kubectl get clusterrolebinding -l app.kubernetes.io/part-of=argo-jit-rbac,jit-rbac/sync-status=completed \
                   -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.metadata.labels.jit-rbac/app}{"\t"}{.roleRef.name}{"\n"}{end}' 2>/dev/null | \
                 while IFS=$'\t' read -r crb_name app_name role_name; do
                   [ -z "$crb_name" ] && continue
                   
-                  echo "Removing completed: CRB=$crb_name, App=$app_name, Role=$role_name"
+                  echo "Removing completed: CRB=${crb_name}, App=${app_name}, Role=${role_name}"
                   
                   # Event: Cleanup completed
                   kubectl create event "jit-rbac-cleanup-${crb_name}-$(date +%s)" \
@@ -62,13 +65,13 @@ spec:
                     --reason=JitRbacCleanupCompleted \
                     --message="action=cleanup status=completed crb=${crb_name} app=${app_name} role=${role_name} reason=sync_completed" \
                     --reporting-controller=jit-rbac-cleanup \
-                    --namespace=kube-system || true
+                    --namespace=kube-system 2>/dev/null || true
                   
                   # Очистить rules в ClusterRole
                   kubectl patch clusterrole "$role_name" --type=merge -p '{"rules":[]}' 2>/dev/null || true
                   
                   # Удалить ClusterRoleBinding
-                  kubectl delete clusterrolebinding "$crb_name" --ignore-not-found=true || true
+                  kubectl delete clusterrolebinding "$crb_name" --ignore-not-found=true 2>/dev/null || true
                   
                   COUNT_COMPLETED=$((COUNT_COMPLETED + 1))
                 done
@@ -76,7 +79,9 @@ spec:
                 # ========================================
                 # Приоритет 2: Удалить in-progress старше 30 минут
                 # ========================================
+                echo ""
                 echo "--- Phase 2: Cleanup stuck in-progress RBAC (>30 min) ---"
+                
                 kubectl get clusterrolebinding -l app.kubernetes.io/part-of=argo-jit-rbac \
                   -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.metadata.creationTimestamp}{"\t"}{.metadata.labels.jit-rbac/sync-status}{"\t"}{.metadata.labels.jit-rbac/app}{"\t"}{.roleRef.name}{"\n"}{end}' 2>/dev/null | \
                 while IFS=$'\t' read -r crb_name created status app_name role_name; do
@@ -90,7 +95,7 @@ spec:
                   
                   if [ "$status" = "in-progress" ]; then
                     if [ $AGE_MIN -gt 30 ]; then
-                      echo "Removing stuck in-progress: CRB=$crb_name, App=$app_name, Age=${AGE_MIN}m"
+                      echo "Removing stuck in-progress: CRB=${crb_name}, App=${app_name}, Age=${AGE_MIN}m"
                       
                       # Event: Cleanup timeout
                       kubectl create event "jit-rbac-timeout-${crb_name}-$(date +%s)" \
@@ -98,16 +103,17 @@ spec:
                         --reason=JitRbacCleanupTimeout \
                         --message="action=cleanup status=timeout crb=${crb_name} app=${app_name} role=${role_name} age_min=${AGE_MIN} reason=stuck" \
                         --reporting-controller=jit-rbac-cleanup \
-                        --namespace=kube-system || true
+                        --namespace=kube-system 2>/dev/null || true
                       
                       # Очистить rules
                       kubectl patch clusterrole "$role_name" --type=merge -p '{"rules":[]}' 2>/dev/null || true
                       
                       # Удалить CRB
-                      kubectl delete clusterrolebinding "$crb_name" --ignore-not-found=true || true
+                      kubectl delete clusterrolebinding "$crb_name" --ignore-not-found=true 2>/dev/null || true
                       
                       COUNT_TIMEOUT=$((COUNT_TIMEOUT + 1))
                     else
+                      echo "Active in-progress: CRB=${crb_name}, App=${app_name}, Age=${AGE_MIN}m"
                       COUNT_ACTIVE=$((COUNT_ACTIVE + 1))
                     fi
                   fi
@@ -116,6 +122,7 @@ spec:
                 # ========================================
                 # Cleanup succeeded pods
                 # ========================================
+                echo ""
                 echo "--- Phase 3: Cleanup succeeded pods ---"
                 kubectl delete pod -n kube-system \
                   -l app.kubernetes.io/part-of=argo-jit-rbac \
@@ -125,19 +132,20 @@ spec:
                 # ========================================
                 # Final statistics
                 # ========================================
+                echo ""
                 echo "========================================="
                 echo "Summary:"
-                echo "  Removed completed: $COUNT_COMPLETED"
-                echo "  Removed timeout:   $COUNT_TIMEOUT"
-                echo "  Active in-progress: $COUNT_ACTIVE"
+                echo "  Removed completed:  ${COUNT_COMPLETED}"
+                echo "  Removed timeout:    ${COUNT_TIMEOUT}"
+                echo "  Active in-progress: ${COUNT_ACTIVE}"
                 echo "JIT RBAC Cleanup completed at $(date -u +%FT%TZ)"
                 echo "========================================="
                 
                 # Event: Scan completed
-                kubectl create event jit-rbac-scan-completed-$(date +%s) \
+                kubectl create event "jit-rbac-scan-completed-$(date +%s)" \
                   --type=Normal \
                   --reason=JitRbacScanCompleted \
                   --message="action=scan status=completed removed_completed=${COUNT_COMPLETED} removed_timeout=${COUNT_TIMEOUT} active_in_progress=${COUNT_ACTIVE} timestamp=$(date -u +%FT%TZ)" \
                   --reporting-controller=jit-rbac-cleanup \
                   --reporting-instance=${HOSTNAME} \
-                  --namespace=kube-system || true
+                  --namespace=kube-system 2>/dev/null || true
