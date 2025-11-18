@@ -2,7 +2,6 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: PLACEHOLDER-mark-completed
-  namespace: kube-system
   annotations:
     argocd.argoproj.io/sync-wave: "99"
   labels:
@@ -25,9 +24,7 @@ spec:
         imagePullPolicy: IfNotPresent
         env:
         - name: JIT_RBAC_APP
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.labels['jit-rbac/app']
+          value: PLACEHOLDER
         command: ["/bin/sh", "-c"]
         args:
           - |
@@ -37,7 +34,6 @@ spec:
             echo "Started at $(date -u +%FT%TZ)"
             echo "========================================="
             
-            # Проставить метку completed на ClusterRole
             if kubectl label clusterrole -l jit-rbac/app=${JIT_RBAC_APP} \
               jit-rbac/sync-status=completed --overwrite; then
               echo "✅ ClusterRole labeled successfully"
@@ -46,7 +42,6 @@ spec:
               exit 1
             fi
             
-            # Проставить метку completed на ClusterRoleBinding
             if kubectl label clusterrolebinding -l jit-rbac/app=${JIT_RBAC_APP} \
               jit-rbac/sync-status=completed --overwrite; then
               echo "✅ ClusterRoleBinding labeled successfully"
